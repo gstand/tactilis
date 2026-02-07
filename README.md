@@ -20,7 +20,3 @@ Players press virtual buttons on a grid using their fingers. We use pressure sen
 3. Upload the Arduino sketch to your Elegoo board
 4. Build and deploy to Quest 3
 5. Connect Arduino via USB OTG
-
-## Team
-
-Built for [hackathon name] 2026
