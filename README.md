@@ -2,7 +2,7 @@
   <img src="game/Assets/sollertia_white.svg" alt="Sollertia Logo" width="360" style="background-color:#0a0e17; padding: 24px 32px; border-radius: 12px;">
 </p>
 
-<h3 align="center">A mixed-reality dexterity rehabilitation system for stroke recovery patients.</h3>
+<h3 align="center">A mixed-reality dexterity and hand-eye coordination rehabilitation system for stroke recovery patients.</h3>
 
 <p align="center">Built at UGAHacks XI.</p>
 
@@ -10,7 +10,7 @@
 
 ## What It Does
 
-Sollertia is an AR/VR tool that helps stroke patients regain fine motor control in their fingers. Patients wear a Meta Quest 3 headset and interact with illuminated buttons on a virtual table surface using their index and middle fingers. The system tracks touch accuracy and response time across a timed session, giving clinicians measurable data on dexterity recovery.
+Sollertia is an AR/VR tool that helps stroke patients rebuild dexterity and hand-eye coordination. Patients wear a Meta Quest 3 headset and interact with illuminated buttons on a virtual table surface using their index and middle fingers — training both the fine motor control needed to press accurately and the visual-motor coordination needed to locate and reach each button. The system tracks touch accuracy and response time across a timed session, giving clinicians measurable data on recovery progress.
 
 ## Why It Matters
 
