@@ -1,16 +1,19 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.XR;
+using UnityEngine.XR.Hands;
 
 /// <summary>
 /// Manages the calibration flow for placing the button grid at the player's fingertip.
-/// Uses XR controller input: Left Grip to place, A to confirm, B to cancel.
+/// Supports both controller input and hand gestures using Unity XR APIs.
 /// </summary>
 public class CalibrationManager : MonoBehaviour
 {
     public enum CalibrationState
     {
-        Idle,           // Grid hidden, waiting for grip press
-        Positioning,    // Grid visible at fingertip, waiting for A/B
+        Idle,           // Grid hidden, waiting for grip press or pinch
+        Positioning,    // Grid visible at fingertip, waiting for confirm/cancel
         Confirmed       // Calibration complete, grid locked in place
     }
 
@@ -27,6 +30,19 @@ public class CalibrationManager : MonoBehaviour
     [Tooltip("How much to smooth grid movement while positioning")]
     [Range(0f, 1f)]
     public float positionSmoothness = 0.1f;
+    
+    [Tooltip("Distance in front of player if no valid position found")]
+    public float fallbackDistance = 0.5f;
+    
+    [Tooltip("Height for fallback position")]
+    public float fallbackHeight = 0.8f;
+
+    [Header("Gesture Settings")]
+    [Tooltip("Pinch distance threshold (meters)")]
+    public float pinchThreshold = 0.02f;
+    
+    [Tooltip("Time to hold gesture before it triggers")]
+    public float gestureHoldTime = 0.5f;
 
     [Header("Events")]
     public UnityEvent OnCalibrationStarted;
@@ -35,9 +51,20 @@ public class CalibrationManager : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private CalibrationState currentState = CalibrationState.Idle;
+    [SerializeField] private bool useHandTracking = false;
 
     private Vector3 targetGridPosition;
     private Quaternion targetGridRotation;
+    private float pinchStartTime = -1f;
+    private bool wasLeftPinching = false;
+    private bool wasRightPinching = false;
+    
+    // XR Hand tracking
+    private XRHandSubsystem handSubsystem;
+    private Vector3 leftIndexTipPos;
+    private Vector3 leftThumbTipPos;
+    private Vector3 rightIndexTipPos;
+    private Vector3 rightThumbTipPos;
 
     public CalibrationState CurrentState => currentState;
     public bool IsCalibrated => currentState == CalibrationState.Confirmed;
@@ -85,10 +112,115 @@ public class CalibrationManager : MonoBehaviour
 
     private void Update()
     {
+        // Initialize hand subsystem if needed
+        if (handSubsystem == null)
+        {
+            var subsystems = new List<XRHandSubsystem>();
+            SubsystemManager.GetSubsystems(subsystems);
+            if (subsystems.Count > 0)
+            {
+                handSubsystem = subsystems[0];
+            }
+        }
+        
+        // Check for hand tracking availability
+        useHandTracking = handSubsystem != null && handSubsystem.running;
+        
+        // Update hand positions if tracking
+        if (useHandTracking)
+        {
+            UpdateHandPositions();
+            DetectHandGestures();
+        }
+        
         if (currentState == CalibrationState.Positioning)
         {
             UpdateGridPosition();
         }
+    }
+    
+    private void UpdateHandPositions()
+    {
+        if (handSubsystem == null) return;
+        
+        // Get left hand joints
+        if (handSubsystem.leftHand.isTracked)
+        {
+            if (handSubsystem.leftHand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose))
+            {
+                leftIndexTipPos = indexPose.position;
+            }
+            if (handSubsystem.leftHand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose))
+            {
+                leftThumbTipPos = thumbPose.position;
+            }
+        }
+        
+        // Get right hand joints
+        if (handSubsystem.rightHand.isTracked)
+        {
+            if (handSubsystem.rightHand.GetJoint(XRHandJointID.IndexTip).TryGetPose(out Pose indexPose))
+            {
+                rightIndexTipPos = indexPose.position;
+            }
+            if (handSubsystem.rightHand.GetJoint(XRHandJointID.ThumbTip).TryGetPose(out Pose thumbPose))
+            {
+                rightThumbTipPos = thumbPose.position;
+            }
+        }
+    }
+    
+    private void DetectHandGestures()
+    {
+        if (handSubsystem == null) return;
+        
+        // LEFT HAND PINCH = Start positioning OR Confirm
+        bool leftPinching = handSubsystem.leftHand.isTracked && 
+                           Vector3.Distance(leftIndexTipPos, leftThumbTipPos) < pinchThreshold;
+        
+        // RIGHT HAND PINCH = Cancel
+        bool rightPinching = handSubsystem.rightHand.isTracked && 
+                            Vector3.Distance(rightIndexTipPos, rightThumbTipPos) < pinchThreshold;
+        
+        switch (currentState)
+        {
+            case CalibrationState.Idle:
+                // Left pinch to start positioning
+                if (leftPinching && !wasLeftPinching)
+                {
+                    StartPositioning();
+                }
+                break;
+                
+            case CalibrationState.Positioning:
+                // Left pinch to confirm (hold gesture)
+                if (leftPinching)
+                {
+                    if (pinchStartTime < 0)
+                    {
+                        pinchStartTime = Time.time;
+                    }
+                    else if (Time.time - pinchStartTime >= gestureHoldTime)
+                    {
+                        ConfirmCalibration();
+                        pinchStartTime = -1f;
+                    }
+                }
+                else
+                {
+                    pinchStartTime = -1f;
+                }
+                
+                // Right pinch to cancel
+                if (rightPinching && !wasRightPinching)
+                {
+                    CancelCalibration();
+                }
+                break;
+        }
+        
+        wasLeftPinching = leftPinching;
+        wasRightPinching = rightPinching;
     }
 
     private void OnLeftGripPressed()
@@ -185,26 +317,114 @@ public class CalibrationManager : MonoBehaviour
 
     private void CalculateGridTransform()
     {
-        if (indexFingerTip == null || Camera.main == null) return;
+        if (Camera.main == null) return;
 
-        // Position at fingertip with vertical offset
-        targetGridPosition = indexFingerTip.position + Vector3.up * verticalOffset;
+        // Get the best available position for the grid
+        Vector3 handPosition = GetBestHandPosition();
+        
+        // Position at hand location with vertical offset
+        targetGridPosition = handPosition + Vector3.up * verticalOffset;
 
         // Calculate flat rotation facing player horizontally
-        Vector3 playerForward = Camera.main.transform.forward;
-        playerForward.y = 0f;
+        Vector3 toPlayer = Camera.main.transform.position - targetGridPosition;
+        toPlayer.y = 0f;
         
-        if (playerForward.sqrMagnitude < 0.001f)
+        if (toPlayer.sqrMagnitude < 0.001f)
         {
-            playerForward = Vector3.forward;
+            toPlayer = -Camera.main.transform.forward;
+            toPlayer.y = 0f;
         }
-        playerForward.Normalize();
+        toPlayer.Normalize();
 
         // Create rotation: grid faces player, but lies flat (parallel to ground)
-        // LookRotation creates a rotation facing playerForward with Y-up
-        // Then we rotate 90° on X to make the grid lie flat
-        Quaternion facePlayer = Quaternion.LookRotation(playerForward, Vector3.up);
+        Quaternion facePlayer = Quaternion.LookRotation(toPlayer, Vector3.up);
         targetGridRotation = facePlayer * Quaternion.Euler(90f, 0f, 0f);
+    }
+    
+    private Vector3 GetBestHandPosition()
+    {
+        Vector3 position = Vector3.zero;
+        bool foundValidPosition = false;
+        
+        // Priority 1: Use XR hand tracking index finger tip if available
+        if (useHandTracking && handSubsystem != null && handSubsystem.leftHand.isTracked)
+        {
+            position = leftIndexTipPos;
+            foundValidPosition = IsValidPosition(position);
+            if (foundValidPosition)
+            {
+                return position;
+            }
+        }
+        
+        // Priority 2: Use assigned indexFingerTip transform
+        if (indexFingerTip != null)
+        {
+            position = indexFingerTip.position;
+            foundValidPosition = IsValidPosition(position);
+            if (foundValidPosition)
+            {
+                return position;
+            }
+        }
+        
+        // Priority 3: Use left controller position via Unity XR
+        var leftHandDevices = new List<InputDevice>();
+        InputDevices.GetDevicesWithCharacteristics(
+            InputDeviceCharacteristics.Left | InputDeviceCharacteristics.Controller,
+            leftHandDevices
+        );
+        
+        if (leftHandDevices.Count > 0)
+        {
+            if (leftHandDevices[0].TryGetFeatureValue(CommonUsages.devicePosition, out Vector3 controllerPos))
+            {
+                // Convert local controller position to world space
+                Transform cameraRig = Camera.main.transform.parent;
+                if (cameraRig != null)
+                {
+                    position = cameraRig.TransformPoint(controllerPos);
+                }
+                else
+                {
+                    position = Camera.main.transform.TransformPoint(controllerPos);
+                }
+                
+                foundValidPosition = IsValidPosition(position);
+                if (foundValidPosition)
+                {
+                    return position;
+                }
+            }
+        }
+        
+        // Priority 4: Fallback - position in front of player
+        Vector3 forward = Camera.main.transform.forward;
+        forward.y = 0;
+        forward.Normalize();
+        
+        position = Camera.main.transform.position + forward * fallbackDistance;
+        position.y = fallbackHeight;
+        
+        return position;
+    }
+    
+    private bool IsValidPosition(Vector3 pos)
+    {
+        // Check if position is reasonable (not at origin, not too far, not too high/low)
+        if (pos.sqrMagnitude < 0.01f) return false;  // Too close to origin
+        if (pos.magnitude > 50f) return false;        // Too far away
+        
+        // Check relative to camera
+        if (Camera.main != null)
+        {
+            Vector3 relativePos = pos - Camera.main.transform.position;
+            if (relativePos.magnitude > 5f) return false;  // More than 5m from camera
+            if (relativePos.y > 2f) return false;          // More than 2m above camera
+            if (relativePos.y < -3f) return false;         // More than 3m below camera
+        }
+        
+        return true;
     }
 
     private void UpdateUIForState()
@@ -214,21 +434,44 @@ public class CalibrationManager : MonoBehaviour
         switch (currentState)
         {
             case CalibrationState.Idle:
-                arUI.SetRulesText(
-                    "<size=120%><b>CALIBRATION</b></size>\n\n" +
-                    "Position your <color=#4488FF>LEFT HAND</color> where you want the button grid.\n\n" +
-                    "Press <b>LEFT GRIP</b> to place the grid."
-                );
+                if (useHandTracking)
+                {
+                    arUI.SetRulesText(
+                        "<size=120%><b>CALIBRATION</b></size>\n\n" +
+                        "Position your <color=#4488FF>LEFT HAND</color> where you want the button grid.\n\n" +
+                        "<color=#44FF44>PINCH</color> with left hand to place the grid."
+                    );
+                }
+                else
+                {
+                    arUI.SetRulesText(
+                        "<size=120%><b>CALIBRATION</b></size>\n\n" +
+                        "Position your <color=#4488FF>LEFT CONTROLLER</color> where you want the button grid.\n\n" +
+                        "Press <b>LEFT GRIP</b> to place the grid."
+                    );
+                }
                 arUI.ShowRules(true);
                 break;
 
             case CalibrationState.Positioning:
-                arUI.SetRulesText(
-                    "<size=120%><b>ADJUST POSITION</b></size>\n\n" +
-                    "Move your hand to adjust the grid position.\n\n" +
-                    "Press <color=#44FF44><b>A</b></color> to confirm\n" +
-                    "Press <color=#FF4444><b>B</b></color> to cancel"
-                );
+                if (useHandTracking)
+                {
+                    arUI.SetRulesText(
+                        "<size=120%><b>ADJUST POSITION</b></size>\n\n" +
+                        "Move your left hand to adjust the grid position.\n\n" +
+                        "<color=#44FF44>HOLD PINCH</color> (left hand) to confirm\n" +
+                        "<color=#FF4444>PINCH</color> (right hand) to cancel"
+                    );
+                }
+                else
+                {
+                    arUI.SetRulesText(
+                        "<size=120%><b>ADJUST POSITION</b></size>\n\n" +
+                        "Move your controller to adjust the grid position.\n\n" +
+                        "Press <color=#44FF44><b>A</b></color> to confirm\n" +
+                        "Press <color=#FF4444><b>B</b></color> to cancel"
+                    );
+                }
                 break;
 
             case CalibrationState.Confirmed:
@@ -258,15 +501,30 @@ public class CalibrationManager : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (indexFingerTip == null) return;
+        // Draw fallback position area
+        if (Camera.main != null)
+        {
+            Vector3 forward = Camera.main.transform.forward;
+            forward.y = 0;
+            forward.Normalize();
+            
+            Vector3 fallbackPos = Camera.main.transform.position + forward * fallbackDistance;
+            fallbackPos.y = fallbackHeight;
+            
+            Gizmos.color = Color.gray;
+            Gizmos.DrawWireCube(fallbackPos, new Vector3(0.3f, 0.01f, 0.3f));
+        }
+        
+        // Draw fingertip position if assigned
+        if (indexFingerTip != null)
+        {
+            Vector3 gizmoPos = indexFingerTip.position + Vector3.up * verticalOffset;
+            
+            Gizmos.color = currentState == CalibrationState.Confirmed ? Color.green : Color.cyan;
+            Gizmos.DrawWireCube(gizmoPos, new Vector3(0.3f, 0.01f, 0.3f));
 
-        Vector3 gizmoPos = indexFingerTip.position + Vector3.up * verticalOffset;
-
-        Gizmos.color = currentState == CalibrationState.Confirmed ? Color.green : Color.cyan;
-        Gizmos.DrawWireCube(gizmoPos, new Vector3(0.3f, 0.01f, 0.3f));
-
-        // Draw fingertip position
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(indexFingerTip.position, 0.02f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(indexFingerTip.position, 0.02f);
+        }
     }
 }

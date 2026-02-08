@@ -76,7 +76,9 @@ public class WhackAMoleGameManager : MonoBehaviour {
         if (arUI != null) {
             arUI.SetRulesText(rulesText);
             arUI.ShowRules(true);
-            arUI.SetScore(0);
+            arUI.ShowScore(false);      // Hide score during rules
+            arUI.ShowTimer(false);      // Hide timer during rules
+            arUI.ShowCountdown(false);  // Hide countdown during rules
             arUI.HideGameOver();
         }
     }
@@ -104,10 +106,6 @@ public class WhackAMoleGameManager : MonoBehaviour {
     void UpdateShowingRules() {
         stateTimer -= Time.deltaTime;
         
-        if (arUI != null) {
-            arUI.SetTimer(stateTimer);
-        }
-        
         if (stateTimer <= 0) {
             StartCountdown();
         }
@@ -119,7 +117,9 @@ public class WhackAMoleGameManager : MonoBehaviour {
         stateTimer = 1f;
         
         if (arUI != null) {
-            arUI.SetRulesText($"<size=200%><b>{countdownNumber}</b></size>");
+            arUI.ShowRules(false);       // Hide rules
+            arUI.ShowCountdown(true);    // Show countdown panel
+            arUI.SetCountdown(countdownNumber);
         }
         
         PlaySound(countdownSound);
@@ -134,7 +134,7 @@ public class WhackAMoleGameManager : MonoBehaviour {
             if (countdownNumber > 0) {
                 stateTimer = 1f;
                 if (arUI != null) {
-                    arUI.SetRulesText($"<size=200%><b>{countdownNumber}</b></size>");
+                    arUI.SetCountdown(countdownNumber);
                 }
                 PlaySound(countdownSound);
             } else {
@@ -150,19 +150,24 @@ public class WhackAMoleGameManager : MonoBehaviour {
         nextSpawnTime = Time.time + 0.5f;
         
         if (arUI != null) {
-            arUI.SetRulesText("<size=150%><b>GO!</b></size>");
+            arUI.ShowCountdown(false);   // Hide countdown
+            arUI.SetCountdownText("GO!");
+            arUI.ShowCountdown(true);    // Show "GO!" briefly
             arUI.SetScore(score);
+            arUI.ShowScore(true);        // Show score panel
+            arUI.SetTimer(gameTimer);
+            arUI.ShowTimer(true);        // Show timer panel
         }
         
         PlaySound(gameStartSound);
         
         // Hide the "GO!" after a moment
-        Invoke(nameof(HideRulesPanel), 0.5f);
+        Invoke(nameof(HideCountdownPanel), 0.5f);
     }
     
-    void HideRulesPanel() {
+    void HideCountdownPanel() {
         if (arUI != null) {
-            arUI.ShowRules(false);
+            arUI.ShowCountdown(false);
         }
     }
     
@@ -297,7 +302,8 @@ public class WhackAMoleGameManager : MonoBehaviour {
         activeButtons.Clear();
         
         if (arUI != null) {
-            arUI.ShowGameOver(score);
+            arUI.ShowTimer(false);       // Hide timer
+            arUI.ShowGameOver(score);    // Show game over panel
         }
         
         Debug.Log($"[WhackAMole] Game Over! Final Score: {score}");
@@ -332,7 +338,12 @@ public class WhackAMoleGameManager : MonoBehaviour {
         
         if (arUI != null) {
             arUI.SetScore(score);
+            arUI.ShowScore(true);        // Show score panel
             arUI.SetTimer(gameTimer);
+            arUI.ShowTimer(true);        // Show timer panel
+            arUI.ShowRules(false);
+            arUI.ShowCountdown(false);
+            arUI.HideGameOver();
         }
         
         PlaySound(gameStartSound);
@@ -354,7 +365,10 @@ public class WhackAMoleGameManager : MonoBehaviour {
         activeButtons.Clear();
         
         if (arUI != null) {
-            arUI.SetScore(0);
+            arUI.ShowScore(false);
+            arUI.ShowTimer(false);
+            arUI.ShowRules(false);
+            arUI.ShowCountdown(false);
             arUI.HideGameOver();
         }
         
