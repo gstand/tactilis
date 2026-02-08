@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
+using Tactilis;
 
 /// <summary>
 /// Master controller that orchestrates the entire game flow:
@@ -18,9 +19,16 @@ public class GameController : MonoBehaviour
     }
 
     [Header("References")]
+    [Tooltip("New hybrid calibration system (preferred)")]
+    public SollertiaCalibrationSystem sollertiaCalibration;
+    [Tooltip("Legacy manual calibration (fallback)")]
     public CalibrationManager calibrationManager;
     public WhackAMoleGameManager gameManager;
     public ARGameUI arUI;
+    
+    [Header("Calibration Mode")]
+    [Tooltip("Use the new hybrid calibration system if available")]
+    public bool useHybridCalibration = true;
 
     [Header("Countdown Settings")]
     public float getReadyDuration = 1.5f;
@@ -46,6 +54,11 @@ public class GameController : MonoBehaviour
 
     private void Start()
     {
+        // Find hybrid calibration system first
+        if (sollertiaCalibration == null)
+        {
+            sollertiaCalibration = FindFirstObjectByType<SollertiaCalibrationSystem>();
+        }
         if (calibrationManager == null)
         {
             calibrationManager = FindFirstObjectByType<CalibrationManager>();
@@ -70,6 +83,13 @@ public class GameController : MonoBehaviour
 
     private void SubscribeToEvents()
     {
+        // Subscribe to hybrid calibration system
+        if (sollertiaCalibration != null && useHybridCalibration)
+        {
+            sollertiaCalibration.OnCalibrationCompleted.AddListener(OnHybridCalibrationCompleted);
+        }
+        
+        // Subscribe to legacy calibration manager
         if (calibrationManager != null)
         {
             calibrationManager.OnCalibrationConfirmed.AddListener(OnCalibrationConfirmed);
@@ -79,28 +99,47 @@ public class GameController : MonoBehaviour
 
     private void UnsubscribeFromEvents()
     {
+        if (sollertiaCalibration != null)
+        {
+            sollertiaCalibration.OnCalibrationCompleted.RemoveListener(OnHybridCalibrationCompleted);
+        }
+        
         if (calibrationManager != null)
         {
             calibrationManager.OnCalibrationConfirmed.RemoveListener(OnCalibrationConfirmed);
             calibrationManager.OnCalibrationCancelled.RemoveListener(OnCalibrationCancelled);
         }
     }
+    
+    private void OnHybridCalibrationCompleted(Vector3 position, Quaternion rotation)
+    {
+        Debug.Log($"[GameController] Hybrid calibration completed at {position}");
+        StartCountdown();
+    }
 
     private void InitializeGame()
     {
         currentState = GameState.WaitingForCalibration;
 
-        if (gameManager != null)
-        {
-            gameManager.enabled = false;
-        }
+        // Don't disable gameManager — it stays in Idle state and its Update() is a no-op.
+        // Disabling it causes issues when re-enabling mid-frame.
 
         if (arUI != null)
         {
             arUI.HideGameOver();
         }
 
-        Debug.Log("[GameController] Game initialized - waiting for calibration");
+        // Auto-start hybrid calibration if enabled
+        if (useHybridCalibration && sollertiaCalibration != null)
+        {
+            currentState = GameState.Calibrating;
+            sollertiaCalibration.StartCalibration();
+            Debug.Log("[GameController] Game initialized - starting hybrid calibration");
+        }
+        else
+        {
+            Debug.Log("[GameController] Game initialized - waiting for manual calibration");
+        }
     }
 
     private void OnCalibrationConfirmed()
@@ -174,8 +213,11 @@ public class GameController : MonoBehaviour
 
         if (gameManager != null)
         {
-            gameManager.enabled = true;
             gameManager.StartGameDirectly();
+        }
+        else
+        {
+            Debug.LogError("[GameController] gameManager is NULL — cannot start game!");
         }
 
         OnGameStarted?.Invoke();
@@ -188,11 +230,6 @@ public class GameController : MonoBehaviour
     public void EndGame()
     {
         currentState = GameState.GameOver;
-
-        if (gameManager != null)
-        {
-            gameManager.enabled = false;
-        }
 
         OnGameEnded?.Invoke();
         Debug.Log("[GameController] Game ended");
@@ -213,11 +250,17 @@ public class GameController : MonoBehaviour
 
         if (gameManager != null)
         {
-            gameManager.enabled = false;
             gameManager.ResetGame();
         }
 
-        if (calibrationManager != null)
+        // Reset appropriate calibration system
+        if (useHybridCalibration && sollertiaCalibration != null)
+        {
+            sollertiaCalibration.CancelCalibration();
+            currentState = GameState.Calibrating;
+            sollertiaCalibration.StartCalibration();
+        }
+        else if (calibrationManager != null)
         {
             calibrationManager.ResetCalibration();
         }
@@ -244,7 +287,6 @@ public class GameController : MonoBehaviour
 
         if (gameManager != null)
         {
-            gameManager.enabled = false;
             gameManager.ResetGame();
         }
 
