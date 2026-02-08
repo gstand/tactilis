@@ -70,8 +70,12 @@ namespace Tactilis
         public float defaultTableHeight = 0.75f;
 
         [Header("=== REFERENCES ===")]
-        public TactilisUI gameUI;
+        [Tooltip("New unified UI system")]
+        public SollertiaUI gameUI;
         public TactilisHandTracker handTracker;
+        [Tooltip("Hybrid calibration: auto-detects tables, falls back to manual")]
+        public SollertiaCalibrationSystem calibrationSystem;
+        [Tooltip("Legacy table calibration (optional fallback)")]
         public TactilisTableCalibration tableCalibration;
         public Transform buttonGridRoot;
         public TactilisButton[] buttons;
@@ -144,8 +148,9 @@ namespace Tactilis
         private void Initialize()
         {
             // Validate references
-            if (gameUI == null) gameUI = FindFirstObjectByType<TactilisUI>();
+            if (gameUI == null) gameUI = FindFirstObjectByType<SollertiaUI>();
             if (handTracker == null) handTracker = FindFirstObjectByType<TactilisHandTracker>();
+            if (calibrationSystem == null) calibrationSystem = FindFirstObjectByType<SollertiaCalibrationSystem>();
             if (tableCalibration == null) tableCalibration = FindFirstObjectByType<TactilisTableCalibration>();
 
             // Initialize buttons array if not set
@@ -163,7 +168,15 @@ namespace Tactilis
                 handTracker.OnPinchGesture.AddListener(OnPinchGesture);
             }
 
-            // Subscribe to table calibration events
+            // Subscribe to hybrid calibration system (preferred)
+            if (calibrationSystem != null)
+            {
+                calibrationSystem.OnCalibrationCompleted.AddListener(OnHybridCalibrationCompleted);
+                calibrationSystem.OnAutoDetectionFailed.AddListener(OnAutoDetectionFailed);
+                calibrationSystem.OnStatusChanged.AddListener(OnCalibrationStatusChanged);
+            }
+
+            // Subscribe to legacy table calibration (fallback)
             if (tableCalibration != null)
             {
                 tableCalibration.OnTableSelected.AddListener(OnTableSelected);
@@ -181,7 +194,7 @@ namespace Tactilis
             isInitialized = true;
             currentPhase = GamePhase.Initializing;
 
-            Debug.Log("[TactilisGame] Initialized");
+            Debug.Log("[TactilisGame] Initialized - Sollertia Rehabilitation Game");
         }
 
         private void OnDestroy()
@@ -190,6 +203,13 @@ namespace Tactilis
             {
                 handTracker.OnFingerTap.RemoveListener(OnFingerTap);
                 handTracker.OnPinchGesture.RemoveListener(OnPinchGesture);
+            }
+
+            if (calibrationSystem != null)
+            {
+                calibrationSystem.OnCalibrationCompleted.RemoveListener(OnHybridCalibrationCompleted);
+                calibrationSystem.OnAutoDetectionFailed.RemoveListener(OnAutoDetectionFailed);
+                calibrationSystem.OnStatusChanged.RemoveListener(OnCalibrationStatusChanged);
             }
 
             if (tableCalibration != null)
@@ -207,6 +227,11 @@ namespace Tactilis
             
             if (handTrackingReady)
             {
+                // Start hybrid calibration if available
+                if (calibrationSystem != null)
+                {
+                    calibrationSystem.StartCalibration();
+                }
                 TransitionToPhase(GamePhase.WaitingForTable);
             }
             else
@@ -221,31 +246,52 @@ namespace Tactilis
 
         private void UpdateWaitingForTable()
         {
-            // UI prompts user to look at a table and pinch to select
+            // If using hybrid calibration, it handles its own UI
+            if (calibrationSystem != null && calibrationSystem.IsCalibrating)
+            {
+                // Calibration system is handling detection
+                return;
+            }
+
+            // Fallback: UI prompts user to look at a table and pinch to select
             if (gameUI != null)
             {
                 gameUI.ShowMessage(
                     "<size=120%><b>TABLE CALIBRATION</b></size>\n\n" +
-                    "Look at the table where you want to play.\n\n" +
-                    "<color=#44FF44>PINCH</color> to place the button grid."
+                    "Looking for table surface...\n\n" +
+                    "If no table detected, <color=#44FF44>PINCH</color> to place manually."
                 );
             }
         }
 
         private void UpdatePlacingGrid()
         {
-            // Grid follows the user's index finger tip
+            // If calibration system is in manual mode, let it handle positioning
+            if (calibrationSystem != null && 
+                calibrationSystem.CurrentMode == SollertiaCalibrationSystem.CalibrationMode.Manual)
+            {
+                // Calibration system handles grid positioning
+                return;
+            }
+
+            // Fallback: Grid follows the user's index finger tip
             if (handTracker != null && buttonGridRoot != null)
             {
                 Vector3 fingerPos = handTracker.GetIndexFingerTipPosition(TactilisHandTracker.Hand.Left);
                 
                 // Keep grid at table height, follow finger X/Z
-                Vector3 gridPos = new Vector3(
-                    fingerPos.x,
-                    tableCalibration != null ? tableCalibration.TableHeight : defaultTableHeight,
-                    fingerPos.z
-                );
+                float tableHeight = defaultTableHeight;
+                if (calibrationSystem != null && calibrationSystem.HasValidPlane)
+                {
+                    // Use detected table height
+                    tableHeight = buttonGridRoot.position.y; // Already set by calibration
+                }
+                else if (tableCalibration != null)
+                {
+                    tableHeight = tableCalibration.TableHeight;
+                }
 
+                Vector3 gridPos = new Vector3(fingerPos.x, tableHeight, fingerPos.z);
                 buttonGridRoot.position = Vector3.Lerp(buttonGridRoot.position, gridPos, 0.2f);
 
                 // Rotate to face user
@@ -262,9 +308,46 @@ namespace Tactilis
                 gameUI.ShowMessage(
                     "<size=120%><b>POSITION GRID</b></size>\n\n" +
                     "Move your hand to adjust position.\n\n" +
-                    "<color=#44FF44>PINCH</color> to confirm\n" +
-                    "<color=#FF4444>OPEN HAND</color> to cancel"
+                    "<color=#44FF44>PINCH</color> to confirm"
                 );
+            }
+        }
+
+        // Hybrid calibration event handlers
+        private void OnHybridCalibrationCompleted(Vector3 position, Quaternion rotation)
+        {
+            Debug.Log($"[TactilisGame] Hybrid calibration completed at {position}");
+            
+            // Position grid at calibrated location
+            if (buttonGridRoot != null)
+            {
+                buttonGridRoot.position = position;
+                buttonGridRoot.rotation = rotation;
+                buttonGridRoot.gameObject.SetActive(true);
+            }
+
+            // Skip to countdown
+            TransitionToPhase(GamePhase.Countdown);
+        }
+
+        private void OnAutoDetectionFailed()
+        {
+            Debug.Log("[TactilisGame] Auto-detection failed, switching to manual mode");
+            
+            // Show grid for manual placement
+            if (buttonGridRoot != null)
+            {
+                buttonGridRoot.gameObject.SetActive(true);
+            }
+
+            TransitionToPhase(GamePhase.PlacingGrid);
+        }
+
+        private void OnCalibrationStatusChanged(string status)
+        {
+            if (gameUI != null)
+            {
+                gameUI.ShowMessage(status);
             }
         }
 
