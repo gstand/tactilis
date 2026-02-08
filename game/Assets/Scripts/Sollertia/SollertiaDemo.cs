@@ -67,7 +67,6 @@ namespace Sollertia
         private Image timerProgressBg;
         
         // Passthrough toggle
-        private GameObject passthroughButton;
         private bool passthroughEnabled = false;
         
         // Game state
@@ -303,6 +302,85 @@ namespace Sollertia
             }
             
             Debug.Log($"[SollertiaDemo] XR Origin created. VR: {isVRActive}");
+            
+            // Add XR Ray Interactors for controller/hand UI pointing
+            if (isVRActive)
+            {
+                CreateXRControllers();
+            }
+        }
+        
+        private void CreateXRControllers()
+        {
+            try
+            {
+                var controllerType = System.Type.GetType(
+                    "UnityEngine.XR.Interaction.Toolkit.XRController, Unity.XR.Interaction.Toolkit");
+                var rayInteractorType = System.Type.GetType(
+                    "UnityEngine.XR.Interaction.Toolkit.XRRayInteractor, Unity.XR.Interaction.Toolkit");
+                var lineRendererType = typeof(LineRenderer);
+                
+                if (controllerType == null || rayInteractorType == null)
+                {
+                    Debug.LogWarning("[SollertiaDemo] XR Interaction Toolkit types not found. UI pointing may not work.");
+                    return;
+                }
+                
+                // Left hand controller
+                CreateXRHand("LeftHand Controller", 
+                    UnityEngine.XR.XRNode.LeftHand, controllerType, rayInteractorType);
+                
+                // Right hand controller
+                CreateXRHand("RightHand Controller", 
+                    UnityEngine.XR.XRNode.RightHand, controllerType, rayInteractorType);
+                
+                Debug.Log("[SollertiaDemo] Created XR controllers with ray interactors for UI pointing.");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[SollertiaDemo] Could not create XR controllers: {e.Message}");
+            }
+        }
+        
+        private void CreateXRHand(string name, UnityEngine.XR.XRNode node, 
+            System.Type controllerType, System.Type rayInteractorType)
+        {
+            GameObject handObj = new GameObject(name);
+            handObj.transform.SetParent(cameraOffset.transform);
+            handObj.transform.localPosition = Vector3.zero;
+            handObj.transform.localRotation = Quaternion.identity;
+            
+            // Add XRController
+            var controller = handObj.AddComponent(controllerType);
+            
+            // Set controllerNode via reflection
+            var nodeProp = controllerType.GetProperty("controllerNode");
+            if (nodeProp != null)
+            {
+                nodeProp.SetValue(controller, node);
+            }
+            
+            // Add XRRayInteractor for pointing at UI
+            handObj.AddComponent(rayInteractorType);
+            
+            // Add a simple LineRenderer for visual ray feedback
+            LineRenderer lr = handObj.AddComponent<LineRenderer>();
+            lr.startWidth = 0.005f;
+            lr.endWidth = 0.002f;
+            lr.positionCount = 2;
+            lr.useWorldSpace = true;
+            lr.startColor = new Color(0.3f, 0.6f, 0.9f, 0.5f);
+            lr.endColor = new Color(0.3f, 0.6f, 0.9f, 0.1f);
+            
+            // Use a simple unlit material for the line
+            Shader lineShader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (lineShader == null) lineShader = Shader.Find("Unlit/Color");
+            if (lineShader != null)
+            {
+                Material lineMat = new Material(lineShader);
+                lineMat.color = new Color(0.3f, 0.6f, 0.9f, 0.5f);
+                lr.material = lineMat;
+            }
         }
         
         private void RecenterPlaySpace()
@@ -530,6 +608,29 @@ namespace Sollertia
             btnLabelRect.anchorMax = Vector2.one;
             btnLabelRect.sizeDelta = Vector2.zero;
             
+            // Add a 3D box collider behind the button for hand touch detection
+            // The canvas scale is 0.002, so we need to create a world-space collider
+            if (isVRActive)
+            {
+                GameObject touchCollider = new GameObject("BeginSessionTouchCollider");
+                touchCollider.transform.SetParent(btnObj.transform, false);
+                BoxCollider box = touchCollider.AddComponent<BoxCollider>();
+                box.isTrigger = true;
+                // Size in local canvas units, will be scaled by canvas 0.002
+                box.size = new Vector3(320, 65, 50);
+                box.center = Vector3.zero;
+                
+                Rigidbody rb = touchCollider.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                
+                // Add trigger that calls OnBeginSession when finger touches
+                MenuButtonTrigger trigger = touchCollider.AddComponent<MenuButtonTrigger>();
+                trigger.demo = this;
+                
+                Debug.Log("[SollertiaDemo] Added touch collider to Begin Session button.");
+            }
+            
             // ── Clinician note ──
             GameObject noteObj = new GameObject("ClinicianNote");
             noteObj.transform.SetParent(menuCanvas.transform, false);
@@ -752,7 +853,7 @@ namespace Sollertia
             }
         }
         
-        private void OnBeginSession()
+        public void OnBeginSession()
         {
             if (menuActive && !isPlaying && !gameEnded)
             {
@@ -954,22 +1055,7 @@ namespace Sollertia
             // Passthrough toggle is now in the main menu settings panel
         }
         
-        private void CreatePassthroughIndicator(Transform parent)
-        {
-            GameObject toggleObj = new GameObject("PassthroughToggle");
-            toggleObj.transform.SetParent(parent, false);
-            RectTransform toggleRect = toggleObj.AddComponent<RectTransform>();
-            toggleRect.anchoredPosition = new Vector2(280, 90);
-            toggleRect.sizeDelta = new Vector2(120, 40);
-            
-            Image toggleBg = toggleObj.AddComponent<Image>();
-            toggleBg.color = new Color(0.2f, 0.3f, 0.4f, 0.8f);
-            
-            TextMeshProUGUI toggleText = CreateUIText(toggleObj.transform, "ToggleText", "P: AR Off", Vector2.zero, 14);
-            toggleText.color = new Color(0.7f, 0.8f, 0.9f, 1f);
-            
-            passthroughButton = toggleObj;
-        }
+        
         
         private void CreateScoreUI(Transform parent)
         {
@@ -1092,11 +1178,7 @@ namespace Sollertia
             endPanel.SetActive(false);
         }
         
-        public void OnStartButtonTouched()
-        {
-            // Legacy - now handled by OnBeginSession via menu
-            OnBeginSession();
-        }
+        
         
         private void RefreshControllers()
         {
@@ -1660,9 +1742,9 @@ namespace Sollertia
     }
     
     /// <summary>
-    /// Trigger component for the START button - detects finger touch.
+    /// Trigger component for the Begin Session button - detects finger touch in VR.
     /// </summary>
-    public class StartButtonTrigger : MonoBehaviour
+    public class MenuButtonTrigger : MonoBehaviour
     {
         public SollertiaDemo demo;
         private bool wasPressed = false;
@@ -1671,15 +1753,14 @@ namespace Sollertia
         {
             if (wasPressed) return;
             
-            // Check if it's a finger
             if (other.GetComponent<DemoFinger>() != null)
             {
                 wasPressed = true;
                 if (demo != null)
                 {
-                    demo.OnStartButtonTouched();
+                    demo.OnBeginSession();
                 }
-                Debug.Log("[StartButton] Touched! Starting game...");
+                Debug.Log("[MenuButton] Begin Session touched!");
             }
         }
         
