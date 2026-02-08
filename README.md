@@ -1,8 +1,10 @@
-# Sollertia
+<p align="center">
+  <img src="game/Assets/sollertia_white.svg" alt="Sollertia Logo" width="360" style="background-color:#0a0e17; padding: 24px 32px; border-radius: 12px;">
+</p>
 
-**A mixed-reality dexterity rehabilitation system for stroke recovery patients.**
+<h3 align="center">A mixed-reality dexterity rehabilitation system for stroke recovery patients.</h3>
 
-Built at UGAHacks XI.
+<p align="center">Built at UGAHacks XI.</p>
 
 ---
 
