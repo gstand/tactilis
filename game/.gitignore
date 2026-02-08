@@ -76,6 +76,7 @@ crashlytics-build.properties
 README.md
 **/README.md
 *.md
+*.env 
 
 # ===========================================
 # IDE and Editor
