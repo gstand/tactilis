@@ -264,7 +264,6 @@ DEV_ONBOARDING.md
 SETUP_GUIDE.md
 
 # Environment files
+.env
 .env.local
 .env.*.local
-
-# Keep .env as template
