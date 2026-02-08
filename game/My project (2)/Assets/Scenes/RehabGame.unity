@@ -195,6 +195,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 107072499}
   m_CullTransparentMesh: 1
+--- !u!1 &154746287 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5412617512351737812, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+  m_PrefabInstance: {fileID: 2039550823}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &154746289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154746287}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f024d8b34de79d4c917ceed0019aeed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FingerTipVisual
+  fingerRenderer: {fileID: 0}
+  fingerLight: {fileID: 0}
+  fingerColor: 0
+  blueColor: {r: 0.2, g: 0.4, b: 1, a: 1}
+  redColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  emissionIntensity: 2
+  lightIntensity: 2
+--- !u!135 &154746290
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154746287}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.01
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &165539761
 GameObject:
   m_ObjectHideFlags: 0
@@ -2558,6 +2603,51 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   currentState: 0
+--- !u!1 &1871150987 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5412617511522962537, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+  m_PrefabInstance: {fileID: 2039550823}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1871150989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871150987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f024d8b34de79d4c917ceed0019aeed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FingerTipVisual
+  fingerRenderer: {fileID: 0}
+  fingerLight: {fileID: 0}
+  fingerColor: 1
+  blueColor: {r: 0.2, g: 0.4, b: 1, a: 1}
+  redColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  emissionIntensity: 2
+  lightIntensity: 2
+--- !u!135 &1871150990
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871150987}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.01
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1872759590
 GameObject:
   m_ObjectHideFlags: 0
@@ -2980,6 +3070,18 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 4148778239110795873, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
       insertIndex: 1
       addedObject: {fileID: 2039550826}
+    - targetCorrespondingSourceObject: {fileID: 5412617512351737812, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 154746290}
+    - targetCorrespondingSourceObject: {fileID: 5412617512351737812, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 154746289}
+    - targetCorrespondingSourceObject: {fileID: 5412617511522962537, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1871150990}
+    - targetCorrespondingSourceObject: {fileID: 5412617511522962537, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1871150989}
   m_SourcePrefab: {fileID: 100100000, guid: 0a7d2469f24041c4284c66706f84c45e, type: 3}
 --- !u!4 &2039550824 stripped
 Transform:
@@ -3258,6 +3360,14 @@ PrefabInstance:
       propertyPath: m_StaticEditorFlags
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2268992247176044945, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
+    - target: {fileID: 2338162678499042837, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
     - target: {fileID: 2636388499805449622, guid: 44772939af309fa4794aaaefe318a132, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 0
@@ -3266,6 +3376,14 @@ PrefabInstance:
       propertyPath: m_IsTrigger
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2842673650064315972, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
+    - target: {fileID: 2846063642642595044, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
     - target: {fileID: 3134585376770930712, guid: 44772939af309fa4794aaaefe318a132, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 0
@@ -3326,10 +3444,18 @@ PrefabInstance:
       propertyPath: m_IsTrigger
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6474183985667190324, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
     - target: {fileID: 6767652350436162224, guid: 44772939af309fa4794aaaefe318a132, type: 3}
       propertyPath: m_IsTrigger
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7547510503339191002, guid: 44772939af309fa4794aaaefe318a132, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 20dbf835f0325564fae6ca7599c9ba78, type: 2}
     - target: {fileID: 7790715067418814007, guid: 44772939af309fa4794aaaefe318a132, type: 3}
       propertyPath: m_Name
       value: New Button Grid
