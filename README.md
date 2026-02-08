@@ -1,18 +1,18 @@
-# Tactilis
+# Sollertia
 
 **A mixed-reality dexterity rehabilitation system for stroke recovery patients.**
 
-Built at UGAHacks X.
+Built at UGAHacks XI.
 
 ---
 
 ## What It Does
 
-Tactilis is an AR/VR tool that helps stroke patients regain fine motor control in their fingers. Patients wear a Meta Quest 3 headset and interact with illuminated buttons on a virtual table surface using their index and middle fingers. The system tracks touch accuracy and response time across a timed session, giving clinicians measurable data on dexterity recovery.
+Sollertia is an AR/VR tool that helps stroke patients regain fine motor control in their fingers. Patients wear a Meta Quest 3 headset and interact with illuminated buttons on a virtual table surface using their index and middle fingers. The system tracks touch accuracy and response time across a timed session, giving clinicians measurable data on dexterity recovery.
 
 ## Why It Matters
 
-Stroke survivors often lose fine motor control, and traditional rehabilitation exercises can feel repetitive and unmotivating. Tactilis turns finger dexterity training into a focused, trackable activity inside an immersive environment — making sessions more engaging for patients while giving clinicians concrete performance data.
+Stroke survivors often lose fine motor control, and traditional rehabilitation exercises can feel repetitive and unmotivating. Sollertia turns finger dexterity training into a focused, trackable activity inside an immersive environment — making sessions more engaging for patients while giving clinicians concrete performance data.
 
 ## How It Works
 
@@ -31,7 +31,7 @@ Stroke survivors often lose fine motor control, and traditional rehabilitation e
 ## Project Structure
 
 ```text
-tactilis/
+sollertia/
 ├── dashboard/      # Rust-based core dashboard (hardware integration)
 ├── game/           # Unity VR application (this is the demo)
 │   └── Assets/
@@ -56,7 +56,7 @@ For Quest 3 deployment, see [`QUEST_DEPLOYMENT.md`](game/Assets/Scripts/Sollerti
 
 ## Team
 
-Built by the Tactilis team at UGAHacks X.
+Built by the Sollertia team at UGAHacks XI.
 
 ## License
 

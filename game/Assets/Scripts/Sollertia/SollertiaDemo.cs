@@ -392,7 +392,7 @@ namespace Sollertia
             GameObject footerObj = new GameObject("Footer");
             footerObj.transform.SetParent(menuCanvas.transform, false);
             TextMeshProUGUI footerText = footerObj.AddComponent<TextMeshProUGUI>();
-            footerText.text = "v1.0  \u2022  UGAHacks X";
+            footerText.text = "v1.0  \u2022  UGAHacks XI";
             footerText.fontSize = 12;
             footerText.color = new Color(0.4f, 0.5f, 0.6f, 0.4f);
             footerText.alignment = TextAlignmentOptions.Center;
