@@ -9,11 +9,20 @@ license.workspace = true
 [dependencies]
 eframe = "0.31"
 egui = "0.31"
+<<<<<<< HEAD
 egui_plot = "0.31"
 serial2 = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros"] }
+=======
+serial2 = "0.2.33"
+sollertia-core = { path = "../sollertia-core" }
+tokio = { version = "1", features = ["full"] }
+>>>>>>> 06e22f9e45c02d123a2dac56bda5f74fde80a538
 tokio-tungstenite = "0.26"
 futures-util = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+<<<<<<< HEAD
 sollertia-core = { path = "../sollertia-core" }
+=======
+>>>>>>> 06e22f9e45c02d123a2dac56bda5f74fde80a538
