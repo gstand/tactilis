@@ -7,3 +7,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+eframe = "0.31"
+egui = "0.31"
+serial2 = "0.2.33"
+sollertia-core = { path = "../sollertia-core" }
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

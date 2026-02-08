@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Finger {
     Index,
     Middle,
@@ -31,7 +33,7 @@ impl Display for Finger {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pressure {
     pub pressure: u16,
     pub finger: Finger,
