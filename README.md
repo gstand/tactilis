@@ -56,6 +56,13 @@ sollertia/
 
 For Quest 3 deployment, see [`QUEST_DEPLOYMENT.md`](game/Assets/Scripts/Sollertia/QUEST_DEPLOYMENT.md).
 
+## Future Directions
+
+- **Biosensing integration** — pressure sensors on fingertips to capture actual force data during presses, giving clinicians richer dexterity metrics
+- **Physiological monitoring** — heart rate, galvanic skin response, and other biosignals to track patient stress and engagement during sessions
+- **Longitudinal tracking** — session-over-session dashboards so clinicians can visualize recovery trends over weeks and months
+- **Adaptive difficulty** — automatically adjust button speed and spacing based on patient performance
+
 ## Team
 
 Built by the Sollertia team at UGAHacks XI.
