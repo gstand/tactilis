@@ -1,6 +1,7 @@
 use std::fmt::Display;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum Finger {
     Index,
     Middle,
@@ -31,10 +32,54 @@ impl Display for Finger {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pressure {
     pub pressure: u16,
     pub finger: Finger,
+}
+
+/// Message sent from dashboard to Unity when a press is detected
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PressEvent {
+    pub finger: Finger,
+    pub pressure: u16,
+    pub timestamp_ms: u64,
+}
+
+/// 3D position in AR space
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct Vec3 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+impl Vec3 {
+    pub fn distance(&self, other: &Vec3) -> f32 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+}
+
+/// Response from Unity with position data for accuracy calculation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnityResponse {
+    pub finger_position: Vec3,
+    pub target_position: Vec3,
+    pub target_id: u32,
+    pub timestamp_ms: u64,
+}
+
+/// A single tap record for tracking dexterity
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TapRecord {
+    pub finger: Finger,
+    pub pressure: u16,
+    pub accuracy_distance: f32,
+    pub reaction_time_ms: u64,
+    pub timestamp_ms: u64,
 }
 
 impl Pressure {
