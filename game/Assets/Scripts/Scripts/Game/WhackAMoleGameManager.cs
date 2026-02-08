@@ -33,8 +33,11 @@ public class WhackAMoleGameManager : MonoBehaviour {
     public AudioClip gameStartSound;
     
     // Game state
-    private enum GameState { ShowingRules, Countdown, Playing, GameOver }
-    private GameState currentState = GameState.ShowingRules;
+    private enum GameState { Idle, ShowingRules, Countdown, Playing, GameOver }
+    private GameState currentState = GameState.Idle;
+    
+    public bool IsGameOver => currentState == GameState.GameOver;
+    public int Score => score;
     
     private int score = 0;
     private float gameTimer;
@@ -62,8 +65,8 @@ public class WhackAMoleGameManager : MonoBehaviour {
         }
         activeButtons.Clear();
         
-        // Show rules
-        StartShowingRules();
+        // Don't auto-start - wait for GameController to call StartGameDirectly()
+        currentState = GameState.Idle;
     }
     
     void StartShowingRules() {
@@ -80,6 +83,9 @@ public class WhackAMoleGameManager : MonoBehaviour {
 
     void Update() {
         switch (currentState) {
+            case GameState.Idle:
+                // Waiting for GameController to start us
+                break;
             case GameState.ShowingRules:
                 UpdateShowingRules();
                 break;
@@ -303,8 +309,55 @@ public class WhackAMoleGameManager : MonoBehaviour {
         }
     }
     
-    // Call this to restart the game
+    // Call this to restart the game (with rules display)
     public void RestartGame() {
         StartShowingRules();
+    }
+    
+    /// <summary>
+    /// Called by GameController to start the game directly (skipping rules/countdown).
+    /// GameController handles its own countdown sequence.
+    /// </summary>
+    public void StartGameDirectly() {
+        currentState = GameState.Playing;
+        score = 0;
+        gameTimer = gameDuration;
+        nextSpawnTime = Time.time + 0.5f;
+        
+        // Deactivate all buttons first
+        foreach (var button in buttons) {
+            if (button != null) button.Deactivate();
+        }
+        activeButtons.Clear();
+        
+        if (arUI != null) {
+            arUI.SetScore(score);
+            arUI.SetTimer(gameTimer);
+        }
+        
+        PlaySound(gameStartSound);
+        Debug.Log("[WhackAMole] Game started directly by GameController");
+    }
+    
+    /// <summary>
+    /// Resets the game state without starting. Called by GameController.
+    /// </summary>
+    public void ResetGame() {
+        currentState = GameState.Idle;
+        score = 0;
+        gameTimer = gameDuration;
+        
+        // Deactivate all buttons
+        foreach (var button in buttons) {
+            if (button != null) button.Deactivate();
+        }
+        activeButtons.Clear();
+        
+        if (arUI != null) {
+            arUI.SetScore(0);
+            arUI.HideGameOver();
+        }
+        
+        Debug.Log("[WhackAMole] Game reset");
     }
 }
