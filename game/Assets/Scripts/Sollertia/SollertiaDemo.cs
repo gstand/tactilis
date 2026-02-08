@@ -144,6 +144,13 @@ namespace Sollertia
             if (uiCanvas != null) uiCanvas.SetActive(false);
             HideFingerTips(true);
             
+            // On Quest, wait for tracking to stabilize then reposition scene in front of player
+            if (isVRActive)
+            {
+                yield return new WaitForSeconds(1.0f);
+                RecenterPlaySpace();
+            }
+            
             Debug.Log("[SollertiaDemo] Main menu ready.");
         }
         
@@ -165,27 +172,53 @@ namespace Sollertia
                 Destroy(listener);
             }
             
-            // Create our XR Origin
+            // Create XR Origin at scene root (NOT parented to transform)
+            // This keeps tracking independent from scene object repositioning
             xrOrigin = new GameObject("SollertiaXROrigin");
-            xrOrigin.transform.SetParent(transform);
-            xrOrigin.transform.localPosition = Vector3.zero;
-            xrOrigin.transform.localRotation = Quaternion.identity;
+            xrOrigin.transform.position = Vector3.zero;
+            xrOrigin.transform.rotation = Quaternion.identity;
+            
+            // Try to add the proper XROrigin component from Unity.XR.CoreUtils
+            try
+            {
+                var xrOriginType = System.Type.GetType("Unity.XR.CoreUtils.XROrigin, Unity.XR.CoreUtils");
+                if (xrOriginType != null)
+                {
+                    xrOrigin.AddComponent(xrOriginType);
+                    Debug.Log("[SollertiaDemo] Added XROrigin component from Unity.XR.CoreUtils");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[SollertiaDemo] Could not add XROrigin component: {e.Message}");
+            }
             
             // Camera Offset (for tracking)
             cameraOffset = new GameObject("CameraOffset");
             cameraOffset.transform.SetParent(xrOrigin.transform);
             cameraOffset.transform.localPosition = Vector3.zero;
             
-            // Main Camera - positioned to see full table and UI comfortably
+            // Main Camera
             GameObject cameraObj = new GameObject("SollertiaCamera");
             cameraObj.transform.SetParent(cameraOffset.transform);
-            cameraObj.transform.localPosition = new Vector3(0, 1.3f, -0.2f); // Slightly back, seated height
-            cameraObj.transform.localRotation = Quaternion.Euler(35f, 0, 0); // Look down at table
             cameraObj.tag = "MainCamera";
+            
+            if (isVRActive)
+            {
+                // In VR, TrackedPoseDriver handles position/rotation - start at origin
+                cameraObj.transform.localPosition = Vector3.zero;
+                cameraObj.transform.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                // Desktop fallback - fixed camera looking down at table
+                cameraObj.transform.localPosition = new Vector3(0, 1.3f, -0.2f);
+                cameraObj.transform.localRotation = Quaternion.Euler(35f, 0, 0);
+            }
             
             mainCamera = cameraObj.AddComponent<Camera>();
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
-            mainCamera.backgroundColor = new Color(0.05f, 0.08f, 0.12f, 1f); // Dark blue background
+            mainCamera.backgroundColor = new Color(0.05f, 0.08f, 0.12f, 1f);
             mainCamera.nearClipPlane = 0.01f;
             mainCamera.farClipPlane = 1000f;
             mainCamera.fieldOfView = 60f;
@@ -194,26 +227,108 @@ namespace Sollertia
             // Add AudioListener
             cameraObj.AddComponent<AudioListener>();
             
-            // Add TrackedPoseDriver for VR head tracking (only in VR mode)
-            // This is handled by XR Interaction Toolkit if available
+            // Configure XROrigin component properties via reflection
             if (isVRActive)
             {
                 try
                 {
-                    var trackedPoseType = System.Type.GetType("UnityEngine.InputSystem.XR.TrackedPoseDriver, Unity.InputSystem");
-                    if (trackedPoseType != null)
+                    var xrOriginType = System.Type.GetType("Unity.XR.CoreUtils.XROrigin, Unity.XR.CoreUtils");
+                    if (xrOriginType != null)
                     {
-                        cameraObj.AddComponent(trackedPoseType);
-                        Debug.Log("[SollertiaDemo] Added TrackedPoseDriver for VR head tracking");
+                        var comp = xrOrigin.GetComponent(xrOriginType);
+                        if (comp != null)
+                        {
+                            // Set Camera
+                            var camProp = xrOriginType.GetProperty("Camera");
+                            if (camProp != null) camProp.SetValue(comp, mainCamera);
+                            
+                            // Set CameraFloorOffsetObject
+                            var offsetProp = xrOriginType.GetProperty("CameraFloorOffsetObject");
+                            if (offsetProp != null) offsetProp.SetValue(comp, cameraOffset);
+                            
+                            Debug.Log("[SollertiaDemo] Configured XROrigin: Camera + CameraFloorOffsetObject set");
+                        }
                     }
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"[SollertiaDemo] Could not add TrackedPoseDriver: {e.Message}");
+                    Debug.LogWarning($"[SollertiaDemo] Could not configure XROrigin: {e.Message}");
                 }
             }
             
-            Debug.Log("[SollertiaDemo] Created camera at eye level, looking down at table.");
+            // Add TrackedPoseDriver for VR head tracking
+            if (isVRActive)
+            {
+                bool tpdAdded = false;
+                
+                // Try Input System TrackedPoseDriver first
+                try
+                {
+                    var tpdType = System.Type.GetType("UnityEngine.InputSystem.XR.TrackedPoseDriver, Unity.InputSystem");
+                    if (tpdType != null)
+                    {
+                        cameraObj.AddComponent(tpdType);
+                        tpdAdded = true;
+                        Debug.Log("[SollertiaDemo] Added TrackedPoseDriver (InputSystem) for VR head tracking");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[SollertiaDemo] InputSystem TrackedPoseDriver failed: {e.Message}");
+                }
+                
+                // Fallback: try SpatialTracking TrackedPoseDriver
+                if (!tpdAdded)
+                {
+                    try
+                    {
+                        var tpdType = System.Type.GetType("UnityEngine.SpatialTracking.TrackedPoseDriver, UnityEngine.SpatialTracking");
+                        if (tpdType != null)
+                        {
+                            cameraObj.AddComponent(tpdType);
+                            tpdAdded = true;
+                            Debug.Log("[SollertiaDemo] Added TrackedPoseDriver (SpatialTracking) for VR head tracking");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"[SollertiaDemo] SpatialTracking TrackedPoseDriver failed: {e.Message}");
+                    }
+                }
+                
+                if (!tpdAdded)
+                {
+                    Debug.LogError("[SollertiaDemo] WARNING: No TrackedPoseDriver could be added! Head tracking may not work.");
+                }
+            }
+            
+            Debug.Log($"[SollertiaDemo] XR Origin created. VR: {isVRActive}");
+        }
+        
+        private void RecenterPlaySpace()
+        {
+            if (mainCamera == null) return;
+            
+            Vector3 headPos = mainCamera.transform.position;
+            Vector3 headForward = mainCamera.transform.forward;
+            
+            // Project forward onto horizontal plane
+            headForward.y = 0;
+            if (headForward.sqrMagnitude < 0.01f) headForward = Vector3.forward;
+            headForward.Normalize();
+            
+            // Rotate scene root so local +Z faces the player's look direction
+            transform.rotation = Quaternion.LookRotation(headForward, Vector3.up);
+            
+            // Position scene root so objects appear relative to the player's horizontal position
+            // Objects are designed with the player at local (0, ~headHeight, 0)
+            // Table at (0, 0.7, 0.6), menu at (0, 1.2, 1.5) in local coords
+            transform.position = new Vector3(headPos.x, headPos.y - 1.3f, headPos.z);
+            
+            // Offset forward slightly so objects aren't inside the player
+            // (XR Origin is independent, so this only moves scene objects)
+            
+            Debug.Log($"[SollertiaDemo] Recentered play space. Head at {headPos}, facing {headForward}");
         }
         
         private void CreateEventSystem()
@@ -225,11 +340,82 @@ namespace Sollertia
                 esObj.transform.SetParent(transform);
                 esObj.AddComponent<EventSystem>();
                 
-                // Use the new Input System UI module
-                esObj.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                bool xrModuleAdded = false;
                 
-                Debug.Log("[SollertiaDemo] Created EventSystem with InputSystem UI module.");
+                // Try XR UI Input Module first (better for Quest hand tracking + controllers)
+                if (isVRActive)
+                {
+                    try
+                    {
+                        var xrUIType = System.Type.GetType(
+                            "UnityEngine.XR.Interaction.Toolkit.UI.XRUIInputModule, Unity.XR.Interaction.Toolkit");
+                        if (xrUIType != null)
+                        {
+                            esObj.AddComponent(xrUIType);
+                            xrModuleAdded = true;
+                            Debug.Log("[SollertiaDemo] Created EventSystem with XR UI Input Module.");
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"[SollertiaDemo] Could not add XRUIInputModule: {e.Message}");
+                    }
+                }
+                
+                // Fallback to standard Input System UI module
+                if (!xrModuleAdded)
+                {
+                    esObj.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                    Debug.Log("[SollertiaDemo] Created EventSystem with InputSystem UI module.");
+                }
             }
+            
+            // Add XR Interaction Manager (required for any XRI interaction)
+            if (isVRActive)
+            {
+                try
+                {
+                    var ximType = System.Type.GetType(
+                        "UnityEngine.XR.Interaction.Toolkit.XRInteractionManager, Unity.XR.Interaction.Toolkit");
+                    if (ximType != null && FindObjectsByType(ximType, FindObjectsSortMode.None).Length == 0)
+                    {
+                        GameObject ximObj = new GameObject("XRInteractionManager");
+                        ximObj.transform.SetParent(transform);
+                        ximObj.AddComponent(ximType);
+                        Debug.Log("[SollertiaDemo] Created XR Interaction Manager.");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[SollertiaDemo] Could not add XRInteractionManager: {e.Message}");
+                }
+            }
+        }
+        
+        private void AddGraphicRaycaster(GameObject canvasObj)
+        {
+            // Try TrackedDeviceGraphicRaycaster for XR (supports controller/hand pointing at UI)
+            if (isVRActive)
+            {
+                try
+                {
+                    var tdgrType = System.Type.GetType(
+                        "UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster, Unity.XR.Interaction.Toolkit");
+                    if (tdgrType != null)
+                    {
+                        canvasObj.AddComponent(tdgrType);
+                        Debug.Log($"[SollertiaDemo] Added TrackedDeviceGraphicRaycaster to {canvasObj.name}");
+                        return;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[SollertiaDemo] TrackedDeviceGraphicRaycaster failed: {e.Message}");
+                }
+            }
+            
+            // Fallback to standard GraphicRaycaster (works for desktop mouse)
+            canvasObj.AddComponent<GraphicRaycaster>();
         }
         
         private void CreateMainMenu()
@@ -239,7 +425,7 @@ namespace Sollertia
             Canvas canvas = menuCanvas.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             menuCanvas.AddComponent<CanvasScaler>();
-            menuCanvas.AddComponent<GraphicRaycaster>();
+            AddGraphicRaycaster(menuCanvas);
             
             RectTransform canvasRect = menuCanvas.GetComponent<RectTransform>();
             canvasRect.sizeDelta = new Vector2(900, 600);
@@ -738,10 +924,10 @@ namespace Sollertia
             // Create World Space Canvas - positioned behind the table, facing player
             uiCanvas = new GameObject("GameCanvas");
             uiCanvas.transform.SetParent(transform);
-            Canvas canvas = uiCanvas.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
+            Canvas gameCanvas = uiCanvas.AddComponent<Canvas>();
+            gameCanvas.renderMode = RenderMode.WorldSpace;
             uiCanvas.AddComponent<CanvasScaler>();
-            uiCanvas.AddComponent<GraphicRaycaster>();
+            AddGraphicRaycaster(uiCanvas);
             
             RectTransform canvasRect = uiCanvas.GetComponent<RectTransform>();
             canvasRect.sizeDelta = new Vector2(800, 300);
