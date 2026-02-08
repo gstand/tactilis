@@ -1,0 +1,12 @@
+[package]
+name = "serial-monitor"
+version = "0.1.0"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ctrlc = "3.5.1"
+serial2 = "0.2.33"
+sollertia-core = { path = "../sollertia-core" }

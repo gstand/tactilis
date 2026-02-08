@@ -1,0 +1,8 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+authors = ["Garret Stand <gstand@gstand.me>", "Mathias Sosa <mathiasosa04@gmail.com>", "Anaya Yorke <ayorke@ggc.edu>", "David Salas Carrascal <davidtnt970@gmail.com>"]
+edition = "2024"
+license = "GPL-3.0-or-later"

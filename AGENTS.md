@@ -10,7 +10,7 @@ Tactilis is a UGAHacks project. Licensed under GPLv3. The project is a diagnosti
 
 The project is organized into three components:
 
-- **core/** - Core dashboard UI (expected: Rust)
+- **dashboard/** - Core dashboard UI (expected: Rust)
 - **game/** - Game client (expected: Unity/C#)
 - **hardware/** - Hardware/embedded code (expected: C++ or Rust)
 
