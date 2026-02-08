@@ -4,4 +4,6 @@
   <Project Path="GameUI.Editor.csproj" />
   <Project Path="Unity.XR.Interaction.Toolkit.Samples.DeviceSimulator.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Tactilis.csproj" />
+  <Project Path="Tactilis.Editor.csproj" />
 </Solution>
