@@ -21,7 +21,7 @@ Stroke survivors often lose fine motor control, and traditional rehabilitation e
 1. **Clinician launches the app** on Meta Quest 3 and is greeted by a clean main menu with a settings panel (AR passthrough toggle, session config).
 2. **Patient begins a session** by tapping the "Begin Session" button — no controllers needed, just hand tracking.
 3. **Buttons light up one at a time** on a virtual table. The patient reaches out and presses them with their fingertip.
-4. **Session ends after 45 seconds**, displaying total buttons pressed. The clinician records the result and can run another session by restarting the app.
+4. **Session ends after 45 seconds**, displaying total buttons pressed. The clinician can view recorded results and can run another session through the dashboard.
 
 ## Tech Stack
 
