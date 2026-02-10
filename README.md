@@ -1,9 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="game/Assets/sollertia_white.svg">
-    <source media="(prefers-color-scheme: light)" srcset="game/Assets/sollertia_dark.svg">
-    <img src="game/Assets/sollertia_white.svg" alt="Sollertia Logo" width="360">
-  </picture>
+  <img src="game/Assets/sollertia_purple.svg" alt="Sollertia Logo" width="360">
 </p>
 
 <h3 align="center">A mixed-reality dexterity and hand-eye coordination rehabilitation system for stroke recovery patients.</h3>
