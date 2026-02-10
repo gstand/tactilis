@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="game/Assets/sollertia_white.svg">
     <source media="(prefers-color-scheme: light)" srcset="game/Assets/sollertia_dark.svg">
-    <img src="game/Assets/sollertia_dark.svg" alt="Sollertia Logo" width="360">
+    <img src="game/Assets/sollertia_white.svg" alt="Sollertia Logo" width="360">
   </picture>
 </p>
 
